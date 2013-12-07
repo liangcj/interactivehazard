@@ -45,7 +45,7 @@
         function kernelDensityEstimator(kernel, x) {
           return function(sample) {
             return x.map(function(x) {
-              return [x, d3.mean(sample, function(v) { return kernel(x - v); })];
+              return [x, d3.sum(sample, function(v) { return v[1]*kernel(x - v[0]); })];
             });
           };
         }
@@ -72,7 +72,10 @@
                 .domain([d3.min(datat.cov), d3.max(datat.cov)])
                 .range([h-pad*1.5, pad*1.5]);
             var yScalehaz = d3.scale.linear()
-                .domain([0, 0.001])
+                .domain([0, 0.005])
+                .range([h-pad*1.5, pad*1.5]);
+            var yScaleNA = d3.scale.linear()
+                .domain([0, 6])
                 .range([h-pad*1.5, pad*1.5]);
             var mxtocov = d3.scale.linear()
                 .domain([pad*1.5, w-pad*1.5])
@@ -83,11 +86,12 @@
             var xAxis = d3.svg.axis().scale(xScale).orient("bottom").ticks(10);
             var yAxis = d3.svg.axis().scale(yScale).orient("left").ticks(10);
             var mouse = [800,200];
+            var mouseold = [800,200];
             var meval = yScale.invert(mouse[1]);
             var bm = mxtocov(mouse[0])/2;
             svg.on("mousemove", function(){
                 mouse = d3.mouse(this);
-                console.log(mouse);
+                //console.log(mouse);
             });
 
             svg.selectAll("circle")
@@ -115,58 +119,80 @@
                     .attr("fill", "gray")
                     .attr("fill-opacity", 0.25);
             
-            var nahaz = d3.svg.line()
+            var hazr = d3.svg.line()
                 .x(function(d){return xScale(d[0]);})
                 .y(function(d){return yScalehaz(d[1]);});
+            var nahaz = d3.svg.area()
+                .x(function(d){return xScale(d[0]);})
+                .y0(h-pad)
+                .y1(function(d){return yScaleNA(d[2]);});
             data.forEach(function(d){
                 if(+d[cc]>(meval-bm) & d[cc]<(meval+bm)){
-                    datasub.push(+d.time);
+                    datasub.push([+d.time, 0, 0]);
                 }
             });
-            var casekde = kernelDensityEstimator(epanechnikovKernel(600), xScale.ticks(50));
+            datasub.forEach(function(d, i){
+                datasub[i][1] = 1/(datasub.length-i);
+                if(i>0){
+                    datasub[i][2] = datasub[i][1] + datasub[i-1][2]
+                } else{
+                    datasub[i][2] = datasub[i][1]
+                }
+            });
+            var casekde = kernelDensityEstimator(epanechnikovKernel(300), xScale.ticks(100));
             var casekdedata = casekde(datasub);
-            casekdedata.unshift([0,0]);
-            casekdedata.push([d3.max(datat.time)+100, 0]);
+            console.log(datasub);
 
             svghaz.append("path")
                     .datum(casekdedata)
                     .attr("class", "hazline")
                     .style("stroke", "rgba(256,128,0,1)")
                     .style("stroke-width", "2px")
-                    .style("fill","rgba(256,128,0,1)")
+                    .style("fill","rgba(256,128,0,0)")
+                    .attr("d", hazr);
+            svghaz.append("path")
+                    .datum(datasub)
+                    .attr("class", "nahazline")
+                    .style("fill","rgba(256,128,0,0.25)")
                     .attr("d", nahaz);
 
             function mgr(){
+                if(mouseold[0]==mouse[0] & mouseold[1]==mouse[1]){
+                    return 0;
+                }
                 meval = yScale.invert(mouse[1]);
                 bm = mxtocov(mouse[0])/2;
                 datasub = [];
                 data.forEach(function(d){
                     if(+d[cc]>(meval-bm) & +d[cc]<meval+bm){
-                        datasub.push(+d.time);
+                        datasub.push([+d.time, 0, 0]);
                     }
                 });
-                casekde = kernelDensityEstimator(epanechnikovKernel(600), xScale.ticks(50));
-                casekdedata = casekde(datasub);
-                casekdedata.unshift([0,0]);
-                casekdedata.push([d3.max(datat.time)+100, 0]);
+                datasub.forEach(function(d, i){
+                    datasub[i][1] = 1/(datasub.length-i);
+                    if(i>0){
+                        datasub[i][2] = datasub[i][1] + datasub[i-1][2]
+                    } else{
+                        datasub[i][2] = datasub[i][1]
+                    }
+                });
 
-                svghaz.select("path")
+                casekdedata = casekde(datasub);
+
+                svghaz.select("path.hazline")
                         .datum(casekdedata)
-                        .attr("class", "hazline")
                         .transition().duration(100)
-                        //.style("stroke", "rgba(256,128,0,1)")
-                        //.style("stroke-width", "2px")
-                        //.style("fill","rgba(256,128,0,1)")
+                        .attr("d", hazr);
+                svghaz.select("path.nahazline")
+                        .datum(datasub)
                         .attr("d", nahaz);
 
-//                datasub.forEach(function(d,i){
-//                    datasub[i]["irisk"] = 1/(datasub.length-i)
-//                });
                 svg.select(".grayrect")
                         .attr("y", mouse[1]-covtoh(bm))
                         .attr("height", covtoh(mxtocov(mouse[0])));
+                mouseold=mouse;
             }
-            setInterval(mgr, 20);
+            setInterval(mgr, 10);
 
 
         })
