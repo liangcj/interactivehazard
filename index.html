@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>C. Jason Liang</title>
+        <link href="http://fonts.googleapis.com/css?family=PT+Sans" rel="stylesheet" type="text/css">
+        <link href="/favicon.ico" rel="shortcut icon">
+        <link href="/css/mystyle.css" rel="stylesheet" type="text/css">
+        <script type="text/javascript" src="d3/d3.v3.js"></script>
+    </head>
+    <body>
+        <h1>
+            <p id="myname"><a href="/index.html">C. Jason Liang</a></p>
+        </h1>
+        <div id="menu">
+            <ul>
+                <li><a href="/index.html">Home</a></li>
+                <li> | </li>
+                <li><a href="/research.html">Research<a></li>
+                <li> | </li>
+                <li><a href="/cv.html">CV</a></li>
+                <li> | </li>
+                <li><a href="/about.html">About</a></li>
+                <li> | </li>
+                <li><a href="/interactive.html">Interactive Survival Data</a></li>
+            </ul>
+        </div>
+
+        <script type="text/javascript">
+        var w = 900;
+        var h = 400;
+        var pad = 30;
+        var svg = d3.select("body")
+            .append("svg")
+                .attr("width", w)
+                .attr("height", h)
+        var svghaz = d3.select("body")
+            .append("svg")
+                .attr("width", w)
+                .attr("height",h)
+        var data;
+        var datat = {time:[], cov:[], irisk:[]};
+        var datasub = [];
+
+        function kernelDensityEstimator(kernel, x) {
+          return function(sample) {
+            return x.map(function(x) {
+              return [x, d3.mean(sample, function(v) { return kernel(x - v); })];
+            });
+          };
+        }
+
+        function epanechnikovKernel(scale) {
+          return function(u) {
+            return Math.abs(u /= scale) <= 1 ? .75 * (1 - u * u) / scale : 0;
+          };
+        }
+
+        d3.csv("/data/pbcdata.csv", function(d){
+            data = d;
+            var cc = "bili";
+            data.forEach(function(d,i){
+                datat.time.push(+d["time"]);
+                datat.cov.push(+d[cc]);
+                datat.irisk.push(1/(data.length-i));
+            });
+
+            var xScale = d3.scale.linear()
+                .domain([d3.min(datat.time), d3.max(datat.time)])
+                .range([pad*1.5, w-pad*1.5]);
+            var yScale = d3.scale.linear()
+                .domain([d3.min(datat.cov), d3.max(datat.cov)])
+                .range([h-pad*1.5, pad*1.5]);
+            var yScalehaz = d3.scale.linear()
+                .domain([0, 0.001])
+                .range([h-pad*1.5, pad*1.5]);
+            var mxtocov = d3.scale.linear()
+                .domain([pad*1.5, w-pad*1.5])
+                .range([0, d3.max(datat.cov)-d3.min(datat.cov)]);
+            var covtoh = d3.scale.linear()
+                .domain([0, d3.max(datat.cov)-d3.min(datat.cov)])
+                .range([0, h-pad*3])
+            var xAxis = d3.svg.axis().scale(xScale).orient("bottom").ticks(10);
+            var yAxis = d3.svg.axis().scale(yScale).orient("left").ticks(10);
+            var mouse = [800,200];
+            var meval = yScale.invert(mouse[1]);
+            var bm = mxtocov(mouse[0])/2;
+            svg.on("mousemove", function(){
+                mouse = d3.mouse(this);
+                console.log(mouse);
+            });
+
+            svg.selectAll("circle")
+                    .data(data)
+                    .enter()
+                .append("circle")
+                    .attr("cx", function(d){return xScale(+d["time"]);})
+                    .attr("cy", function(d){return yScale(+d[cc]);})
+                    .attr("r", 5)
+                    .attr("fill", "orange");
+            svg.append("g")
+                    .attr("class", "x axis")
+                    .attr("transform", "translate(0,"+(h-pad)+")")
+                    .call(xAxis);
+            svg.append("g")
+                    .attr("class", "y axis")
+                    .attr("transform", "translate("+(pad)+",0)")
+                    .call(yAxis);
+            svg.append("rect")
+                    .attr("class", "grayrect")
+                    .attr("x", 0)
+                    .attr("y", 0)
+                    .attr("height", h)
+                    .attr("width", w)
+                    .attr("fill", "gray")
+                    .attr("fill-opacity", 0.25);
+            
+            var nahaz = d3.svg.line()
+                .x(function(d){return xScale(d[0]);})
+                .y(function(d){return yScalehaz(d[1]);});
+            data.forEach(function(d){
+                if(+d[cc]>(meval-bm) & d[cc]<(meval+bm)){
+                    datasub.push(+d.time);
+                }
+            });
+            var casekde = kernelDensityEstimator(epanechnikovKernel(600), xScale.ticks(50));
+            var casekdedata = casekde(datasub);
+            casekdedata.unshift([0,0]);
+            casekdedata.push([d3.max(datat.time)+100, 0]);
+
+            svghaz.append("path")
+                    .datum(casekdedata)
+                    .attr("class", "hazline")
+                    .style("stroke", "rgba(256,128,0,1)")
+                    .style("stroke-width", "2px")
+                    .style("fill","rgba(256,128,0,1)")
+                    .attr("d", nahaz);
+
+            function mgr(){
+                meval = yScale.invert(mouse[1]);
+                bm = mxtocov(mouse[0])/2;
+                datasub = [];
+                data.forEach(function(d){
+                    if(+d[cc]>(meval-bm) & +d[cc]<meval+bm){
+                        datasub.push(+d.time);
+                    }
+                });
+                casekde = kernelDensityEstimator(epanechnikovKernel(600), xScale.ticks(50));
+                casekdedata = casekde(datasub);
+                casekdedata.unshift([0,0]);
+                casekdedata.push([d3.max(datat.time)+100, 0]);
+
+                svghaz.select("path")
+                        .datum(casekdedata)
+                        .attr("class", "hazline")
+                        .transition().duration(100)
+                        //.style("stroke", "rgba(256,128,0,1)")
+                        //.style("stroke-width", "2px")
+                        //.style("fill","rgba(256,128,0,1)")
+                        .attr("d", nahaz);
+
+//                datasub.forEach(function(d,i){
+//                    datasub[i]["irisk"] = 1/(datasub.length-i)
+//                });
+                svg.select(".grayrect")
+                        .attr("y", mouse[1]-covtoh(bm))
+                        .attr("height", covtoh(mxtocov(mouse[0])));
+            }
+            setInterval(mgr, 20);
+
+
+        })
+        </script>
+    </body>
+</html>
