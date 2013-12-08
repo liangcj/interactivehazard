@@ -8,6 +8,20 @@
     font-family: sans-serif;
     font-size: 11px;
 }
+.y.axis.haz path,
+.y.axis.haz line{
+    stroke: rgba(255,90,0,1);
+}
+.y.axis.haz text{
+    fill: rgba(255,90,0,1);
+}
+.y.axis.NA path,
+.y.axis.NA line{
+    stroke: rgb(80,80,80);
+}
+.y.axis.NA text{
+    fill: rgb(80,80,80);
+}
 circle{
     stroke: black;
     stroke-width: 0px;
@@ -31,8 +45,10 @@ body{
     display: block;
     position: relative;
     width: 900px;
-    margin: 1em auto 4em auto;
+    margin: 0px auto 0px auto;
     background-color:rgb(220,220,220);
+    padding: 0px;
+    border: 0px;
 }
 h1{
     width: 900px;
@@ -45,7 +61,7 @@ ul{
 }
 li{
     display:inline-block;
-    font-family: "PT Sans", sans-serif;
+    font-family: "Roboto Slab", serif;
     font-size: 24px;
     color: rgb(100,100,100);
     text-align: center;
@@ -77,4 +93,10 @@ p{
 }
 svg{
     cursor:crosshair;
+}
+svg.button{
+    cursor: pointer;
+}
+svg.scatter{
+    cursor: ew-resize;
 }

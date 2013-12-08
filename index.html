@@ -4,6 +4,7 @@
         <meta charset="utf-8">
         <title>C. Jason Liang</title>
         <link href="http://fonts.googleapis.com/css?family=PT+Sans" rel="stylesheet" type="text/css">
+        <link href='http://fonts.googleapis.com/css?family=Roboto+Slab' rel='stylesheet' type='text/css'>
         <link href="/favicon.ico" rel="shortcut icon">
         <link href="/css/mystyle.css" rel="stylesheet" type="text/css">
         <script type="text/javascript" src="d3/d3.v3.js"></script>
@@ -30,8 +31,14 @@
         var w = 900;
         var h = 400;
         var pad = 30;
+        var svgbut = d3.select("body")
+            .append("svg")
+                .attr("class", "button")
+                .attr("width", w)
+                .attr("height", h/5)
         var svg = d3.select("body")
             .append("svg")
+                .attr("class", "scatter")
                 .attr("width", w)
                 .attr("height", h)
         var svghaz = d3.select("body")
@@ -39,13 +46,13 @@
                 .attr("width", w)
                 .attr("height",h)
         var data;
-        var datat = {time:[], cov:[], irisk:[]};
         var datasub = [];
+        var cc = "age";
 
-        function kernelDensityEstimator(kernel, x) {
+        function kernelhazardEstimator(kernel, x) {
           return function(sample) {
             return x.map(function(x) {
-              return [x, d3.sum(sample, function(v) { return v[1]*kernel(x - v[0]); })];
+              return [x, d3.sum(sample, function(v) { return v[3]*v[1]*kernel(x - v[0]); })];
             });
           };
         }
@@ -57,43 +64,71 @@
         }
 
         d3.csv("/data/pbcdata.csv", function(d){
+//        d3.csv("/data/swog.csv", function(d){
             data = d;
-            var cc = "bili";
-            data.forEach(function(d,i){
-                datat.time.push(+d["time"]);
-                datat.cov.push(+d[cc]);
-                datat.irisk.push(1/(data.length-i));
-            });
 
+            var trange = [d3.min(data, function(d){return +d.time}), d3.max(data, function(d){ return +d.time;})];
+            var covrange = [d3.min(data, function(d){return +d[cc];}), d3.max(data, function(d){return +d[cc];})];
             var xScale = d3.scale.linear()
-                .domain([d3.min(datat.time), d3.max(datat.time)])
+                .domain(trange)
                 .range([pad*1.5, w-pad*1.5]);
             var yScale = d3.scale.linear()
-                .domain([d3.min(datat.cov), d3.max(datat.cov)])
+                .domain(covrange)
                 .range([h-pad*1.5, pad*1.5]);
             var yScalehaz = d3.scale.linear()
-                .domain([0, 0.005])
+                .domain([0, 0.75])
                 .range([h-pad*1.5, pad*1.5]);
             var yScaleNA = d3.scale.linear()
-                .domain([0, 6])
+                .domain([0, 3])
                 .range([h-pad*1.5, pad*1.5]);
             var mxtocov = d3.scale.linear()
                 .domain([pad*1.5, w-pad*1.5])
-                .range([0, d3.max(datat.cov)-d3.min(datat.cov)]);
+                .range([0, covrange[1]-covrange[0]])
             var covtoh = d3.scale.linear()
-                .domain([0, d3.max(datat.cov)-d3.min(datat.cov)])
+                .domain([0, covrange[1]-covrange[0]])
                 .range([0, h-pad*3])
             var xAxis = d3.svg.axis().scale(xScale).orient("bottom").ticks(10);
             var yAxis = d3.svg.axis().scale(yScale).orient("left").ticks(10);
-            var mouse = [800,200];
-            var mouseold = [800,200];
+            var yAxishaz = d3.svg.axis().scale(yScalehaz).orient("left").ticks(10);
+            var yAxisNA = d3.svg.axis().scale(yScaleNA).orient("right").ticks(10);
+            var mouse = [900,200];
+            var mouseold = [900,200];
             var meval = yScale.invert(mouse[1]);
             var bm = mxtocov(mouse[0])/2;
             svg.on("mousemove", function(){
                 mouse = d3.mouse(this);
-                //console.log(mouse);
             });
 
+            svgbut.selectAll(".rect.buttons")
+                    .data(Object.keys(data[1]).slice(2, Object.keys(data[1]).length))
+                    .enter()
+                .append("rect")
+                    .attr("class", ".buttons")
+                    .attr("x", function(d,i){
+                        return i*w/(Object.keys(data[1]).length-2)+5;
+                    })
+                    .attr("y", 5)
+                    .attr("rx", 4)
+                    .attr("ry", 4)
+                    .attr("height", h/5-10)
+                    .attr("width", w/(Object.keys(data[1]).length-2) - 10)
+                    .style("fill", "gray")
+                    .style("fill-opacity", 0.5)
+                    .style("stroke-width", "2px")
+                    .style("stroke", "rgb(120,120,120)");
+            svgbut.selectAll(".text.buttons")
+                    .data(Object.keys(data[1]).slice(2, Object.keys(data[1]).length))
+                    .enter()
+                .append("text")
+                    .attr("x", function(d,i){
+                        return (i+0.5)*w/(Object.keys(data[1]).length-2);
+                    })
+                    .attr("y", h/10+2)
+                    .attr("text-anchor", "middle")
+                    .style("fill", "rgb(128,0,0)")
+                    .style("font-family", "Helvetica")
+                    .style("font-size", "16px")
+                    .text(function(d){return d;});
             svg.selectAll("circle")
                     .data(data)
                     .enter()
@@ -101,60 +136,89 @@
                     .attr("cx", function(d){return xScale(+d["time"]);})
                     .attr("cy", function(d){return yScale(+d[cc]);})
                     .attr("r", 5)
-                    .attr("fill", "orange");
+                    .attr("fill", function(d){
+                        return d.status==1 ? "rgb(0,0,180)" : "transparent";
+                    })
+                    .style("stroke-width", function(d){
+                        return d.status==1 ? "0px" : "2px";
+                    })
+                    .style("stroke", "rgb(70,70,70)");
             svg.append("g")
                     .attr("class", "x axis")
                     .attr("transform", "translate(0,"+(h-pad)+")")
+                    .style("stroke-width", "2px")
                     .call(xAxis);
             svg.append("g")
                     .attr("class", "y axis")
                     .attr("transform", "translate("+(pad)+",0)")
+                    .style("stroke-width", "2px")
                     .call(yAxis);
             svg.append("rect")
                     .attr("class", "grayrect")
-                    .attr("x", 0)
-                    .attr("y", 0)
-                    .attr("height", h)
+                    .attr("x", pad)
+                    .attr("y", mouse[1]-covtoh(bm))
+                    .attr("height", covtoh(mxtocov(mouse[0])))
                     .attr("width", w)
                     .attr("fill", "gray")
-                    .attr("fill-opacity", 0.25);
+                    .attr("fill-opacity", 0.4);
             
             var hazr = d3.svg.line()
                 .x(function(d){return xScale(d[0]);})
                 .y(function(d){return yScalehaz(d[1]);});
             var nahaz = d3.svg.area()
                 .x(function(d){return xScale(d[0]);})
-                .y0(h-pad)
-                .y1(function(d){return yScaleNA(d[2]);});
+                .y0(h-pad*1.5)
+                .y1(function(d){return yScaleNA(d[2]);})
+                .interpolate("step-after");
             data.forEach(function(d){
                 if(+d[cc]>(meval-bm) & d[cc]<(meval+bm)){
-                    datasub.push([+d.time, 0, 0]);
+                    datasub.push([+d.time, 0, 0, +d.status]);
                 }
             });
+            console.log(meval, bm);
             datasub.forEach(function(d, i){
                 datasub[i][1] = 1/(datasub.length-i);
                 if(i>0){
-                    datasub[i][2] = datasub[i][1] + datasub[i-1][2]
+                    datasub[i][2] = datasub[i][1]*datasub[i][3] + datasub[i-1][2]
                 } else{
-                    datasub[i][2] = datasub[i][1]
+                    datasub[i][2] = datasub[i][1]*datasub[i][3]
                 }
             });
-            var casekde = kernelDensityEstimator(epanechnikovKernel(300), xScale.ticks(100));
-            var casekdedata = casekde(datasub);
+
+            datasub.push([trange[1], 0, datasub[datasub.length-1][3], 0]);
+            datasub.unshift([trange[0], 0, 0, 0]);
             console.log(datasub);
 
-            svghaz.append("path")
-                    .datum(casekdedata)
-                    .attr("class", "hazline")
-                    .style("stroke", "rgba(256,128,0,1)")
-                    .style("stroke-width", "2px")
-                    .style("fill","rgba(256,128,0,0)")
-                    .attr("d", hazr);
+            var casekde = kernelhazardEstimator(epanechnikovKernel(1.5), xScale.ticks(100));
+            var casekdedata = casekde(datasub);
+
             svghaz.append("path")
                     .datum(datasub)
                     .attr("class", "nahazline")
-                    .style("fill","rgba(256,128,0,0.25)")
+                    .style("fill","rgb(100,100,100)")
                     .attr("d", nahaz);
+            svghaz.append("path")
+                    .datum(casekdedata)
+                    .attr("class", "hazline")
+                    .style("stroke", "rgba(255,90,0,1)")
+                    .style("stroke-width", "4px")
+                    .style("fill","rgba(255,128,0,0)")
+                    .attr("d", hazr);
+            svghaz.append("g")
+                    .attr("class", "x axis haz")
+                    .attr("transform", "translate(0,"+(h-pad)+")")
+                    .style("stroke-width", "2px")
+                    .call(xAxis);
+            svghaz.append("g")
+                    .attr("class", "y axis haz")
+                    .attr("transform", "translate("+(pad)+",0)")
+                    .style("stroke-width", "2px")
+                    .call(yAxishaz);
+            svghaz.append("g")
+                    .attr("class", "y axis NA")
+                    .attr("transform", "translate("+(w-pad)+",0)")
+                    .style("stroke-width", "2px")
+                    .call(yAxisNA);
 
             function mgr(){
                 if(mouseold[0]==mouse[0] & mouseold[1]==mouse[1]){
@@ -165,17 +229,19 @@
                 datasub = [];
                 data.forEach(function(d){
                     if(+d[cc]>(meval-bm) & +d[cc]<meval+bm){
-                        datasub.push([+d.time, 0, 0]);
+                        datasub.push([+d.time, 0, 0, +d.status]);
                     }
                 });
                 datasub.forEach(function(d, i){
                     datasub[i][1] = 1/(datasub.length-i);
                     if(i>0){
-                        datasub[i][2] = datasub[i][1] + datasub[i-1][2]
+                        datasub[i][2] = datasub[i][1]*datasub[i][3] + datasub[i-1][2]
                     } else{
-                        datasub[i][2] = datasub[i][1]
+                        datasub[i][2] = datasub[i][1]*datasub[i][3]
                     }
                 });
+                datasub.push([trange[1], 0, datasub[datasub.length-1][3], 0]);
+                datasub.unshift([trange[0], 0, 0, 0]);
 
                 casekdedata = casekde(datasub);
 
@@ -186,15 +252,37 @@
                 svghaz.select("path.nahazline")
                         .datum(datasub)
                         .attr("d", nahaz);
-
                 svg.select(".grayrect")
                         .attr("y", mouse[1]-covtoh(bm))
                         .attr("height", covtoh(mxtocov(mouse[0])));
-                mouseold=mouse;
+                mouseold = mouse;
             }
             setInterval(mgr, 10);
 
+            svgbut.on("click", function(){
+                var mt = d3.mouse(this)[0];
+                cc = Object.keys(data[1]).slice(2, Object.keys(data[1]).length)[Math.floor(mt/(w/(Object.keys(data[1]).length-2)))]
+                covrange = [d3.min(data, function(d){return +d[cc];}), d3.max(data, function(d){return +d[cc];})];
 
+                yScale
+                    .domain(covrange)
+                    .range([h-pad*1.5, pad*1.5]);
+                mxtocov
+                    .domain([pad*1.5, w-pad*1.5])
+                    .range([0, covrange[1]-covrange[0]])
+                covtoh
+                    .domain([0, covrange[1]-covrange[0]])
+                    .range([0, h-pad*3])
+                yAxis = d3.svg.axis().scale(yScale).orient("left").ticks(10);
+
+                svg.selectAll("circle")
+                        .transition().duration(500)
+                        .attr("cy", function(d){return yScale(+d[cc]);});
+
+                svg.select(".y.axis")
+                        .transition().duration(500)
+                        .call(yAxis);
+            })
         })
         </script>
     </body>
