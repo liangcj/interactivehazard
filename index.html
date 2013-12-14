@@ -10,9 +10,9 @@
         <script type="text/javascript" src="d3/d3.v3.js"></script>
     </head>
     <body>
-        <h1>
-            <p id="myname"><a href="/index.html">C. Jason Liang</a></p>
-        </h1>
+        <div id="myname">
+            <a href="/index.html">C. Jason Liang</a>
+        </div>
         <div id="menu">
             <ul>
                 <li><a href="/index.html">Home</a></li>
@@ -23,7 +23,7 @@
                 <li> | </li>
                 <li><a href="/about.html">About</a></li>
                 <li> | </li>
-                <li><a href="/interactive.html">Interactive Survival Data</a></li>
+                <li><a href="/tmp.html">Interactive Survival Data</a></li>
             </ul>
         </div>
 
@@ -51,6 +51,7 @@
         var mouseold = [900,200];
         var cc = "age";
         var freeze = 0;
+        var refresh = 0;
 
         function kernelhazardEstimator(kernel, x) {
           return function(sample) {
@@ -98,6 +99,7 @@
             var bm = mxtocov(mouse[0])/2;
 
             svg.on("mousemove", function(){
+                if(freeze==1){return 0;}
                 mouse = d3.mouse(this);
             });
 
@@ -204,8 +206,9 @@
                     .datum(khedata)
                     .attr("class", "hazline")
                     .style("stroke", "rgba(255,90,0,1)")
+//                    .style("stroke", "rgba(218,165,32,1)")
                     .style("stroke-width", "4px")
-                    .style("fill","rgba(255,128,0,0)")
+                    .style("fill-opacity","0")
                     .attr("d", hazr);
             svghaz.append("g")
                     .attr("class", "x axis haz")
@@ -224,10 +227,10 @@
                     .call(yAxisNA);
 
             function mgr(){
-                if((mouseold[0]==mouse[0] && mouseold[1]==mouse[1]) || freeze==1){
+                if(((mouseold[0]==mouse[0] && mouseold[1]==mouse[1]) || freeze==1) && refresh==0){
+                    //IF (mouse hasn't moved OR scatterplot is clicked) AND (no button has been pressed) THEN exit function w/o calculating anything
                     return 0;
                 }
-                console.log(mouse);
                 meval = yScale.invert(mouse[1]);
                 bm = mxtocov(mouse[0])/2;
                 datasub = [];
@@ -260,11 +263,13 @@
                         .attr("y", mouse[1]-covtoh(bm))
                         .attr("height", covtoh(mxtocov(mouse[0])));
                 mouseold = mouse;
+                refresh = 0;
             }
             setInterval(mgr, 10);
 
             svgbut.on("click", function(){
                 freeze = 0;
+                refresh = 1;
                 var mt = d3.mouse(this)[0];
                 cc = d3.keys(data[1]).slice(2, d3.keys(data[1]).length)[Math.floor(mt/(w/(d3.keys(data[1]).length-2)))]
                 covrange = [d3.min(data, function(d){return +d[cc];}), d3.max(data, function(d){return +d[cc];})];

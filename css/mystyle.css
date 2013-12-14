@@ -35,8 +35,10 @@ text{
     font-weight: 300;
     letter-spacing: -2px;
     text-align: center;
+    margin-top: 20px;
     padding-bottom: 5px;
     border-bottom: 1px dotted rgb(100,100,100);
+    display: block;
 }
 #menu{
     height: 60px;
