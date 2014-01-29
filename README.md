@@ -1,5 +1,7 @@
 Interactive non-parametric hazard estimation
 ============================================
+Live demo: http://liangcj.github.io/interactivehazard/
+
 A D3.js demo using the well-worn PBC Mayo data (n=312). Non-parametric conditional hazard estimation with interactive marker-bandwidth selection! Time-bandwidths are hard-coded for now.
 
 Potential uses:
