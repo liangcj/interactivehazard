@@ -7,26 +7,12 @@
         <link href='http://fonts.googleapis.com/css?family=Roboto+Slab' rel='stylesheet' type='text/css'>
         <link href="/favicon.ico" rel="shortcut icon">
         <link href="/css/mystyle.css" rel="stylesheet" type="text/css">
-        <script type="text/javascript" src="/liangcj.github.io/d3/d3.v3.js"></script>
+        <script src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>
     </head>
     <body>
-        <div id="myname">
-            <a href="/index.html">C. Jason Liang</a>
-        </div>
-        <div id="menu">
-            <ul>
-                <li><a href="/index.html">Home</a></li>
-                <li> | </li>
-                <li><a href="/research.html">Research<a></li>
-                <li> | </li>
-                <li><a href="/cv.html">CV</a></li>
-                <li> | </li>
-                <li><a href="/about.html">About</a></li>
-                <li> | </li>
-                <li><a href="/tmp.html">Interactive Survival Data</a></li>
-            </ul>
-        </div>
-
+        <p><a href="/index.html">Home</a> | <a href="/interactive.html">Interactive Survival</a></p>
+        <p>The first graph visualizes the well-worn <a href="http://stat.ethz.ch/R-manual/R-patched/library/survival/html/pbc.html">Mayo PBC survival data</a>. The x-axis is follow-up years, the y-axis is the covariate scale (age, edema, bili, albumin, or protime). <span style="color:blue">Blue</span> dot = death, hollow dot = censored. The second graph shows the <span style="color:rgb(100,100,100)">cumulative hazard</span> (gray; Nelson-Aalen estimator) and <span style="color:rgb(255,120,0)">hazard rate</span> (orange; kernel-smoothed N-A estimator) calculated using the points within the gray box in the first graph.</p>
+        <p>Click the <span style="color:red">red buttons</span> to change the marker (y-axis). Move your cursor over scatterplot to change the window size. Click anywhere in scatterplot to freeze/unfreeze the gray box.</p>
         <script type="text/javascript">
         var w = 900;
         var h = 400;
@@ -379,5 +365,6 @@
             });
         })
         </script>
+        <p>*This demo can easily be adapted to other datasets. Check out my <a href="https://github.com/liangcj/interactivehazard">GitHub repository</a> for the source code. Comments, issues, and pull requests of any size are welcome.</p>
     </body>
 </html>
