@@ -41,6 +41,11 @@
                 .attr("class", "scatter")
                 .attr("width", w)
                 .attr("height", h)
+        var svghud = d3.select("body")
+            .append("svg")
+                .attr("class", "hud")
+                .attr("width", w)
+                .attr("height", h/10)        
         var svghaz = d3.select("body")
             .append("svg")
                 .attr("width", w)
@@ -196,10 +201,80 @@
             var khe = kernelhazardEstimator(epanechnikovKernel(1), xScale.ticks(100));
             var khedata = khe(datasub);
 
+            // BEGIN VERY MESSY LEGEND CODE
+            svghud.append("rect")
+                    .attr("x", pad)
+                    .attr("y", pad/4)
+                    .attr("width", w/2.35)
+                    .attr("height", h/10)
+                    .style("fill", "gray")
+                    .style("fill-opacity", "0.4")
+            svghud.append("text")
+                    .attr("x", pad*1.3)
+                    .attr("y", 30)
+                    .style("fill", "rgb(50,50,50")
+                    .style("font-family", "PT Sans")
+                    .style("font-size", "18px")
+                    .text("time window: 2 years");
+            svghud.append("text")
+                    .attr("class", "hudtxt")
+                    .attr("x", w/3.9)
+                    .attr("y", 30)
+                    .style("fill", "rgb(50,50,50")
+                    .style("font-family", "PT Sans")
+                    .style("font-size", "18px")
+                    .text("marker window: " +  d3.round(mxtocov(mouse[0]), 2));
+            svghud.selectAll("legenddots")
+                    .data([15,35])
+                    .enter()
+                .append("circle")
+                    .attr("cx", w/2)
+                    .attr("cy", function(d){return d;})
+                    .attr("r", 4)
+                    .attr("fill", function(d, i){
+                        return i==0 ? "rgb(0,0,180)" : "transparent";
+                    })
+                    .style("stroke-width", function(d, i){
+                        return i==0 ? "0px" : "2px";
+                    })
+                    .style("stroke", "rgb(70,70,70)");
+            svghud.append("path")
+                    .style("stroke", "rgb(255,90,0)")
+                    .style("stroke-width", "4px")
+                    .attr("d", "M"+w/1.5+","+15+"L"+w/1.45+","+15);
+            svghud.append("path")
+                    .style("stroke", "rgb(50,50,50)")
+                    .style("stroke-width", "8px")
+                    .attr("d", "M"+w/1.5+","+35+"L"+w/1.45+","+35);
+            svghud.selectAll("legendtxt1")
+                    .data([19,40])
+                    .enter()
+                .append("text")
+                    .attr("x", w/2+10)
+                    .attr("y", function(d){return d;})
+                    .style("fill", "rgb(50,50,50)")
+                    .style("font-family", "PT Sans")
+                    .style("font-size", "18px")
+                    .text(function(d,i){
+                        return i==0 ? "death" : "censored";
+                    });
+            // END VERY MESSY LEGEND CODE
+            svghud.selectAll("legendtxt2")
+                    .data([19,40])
+                    .enter()
+                .append("text")
+                    .attr("x", w/1.45+5)
+                    .attr("y", function(d){return d;})
+                    .style("fill", "rgb(50,50,50)")
+                    .style("font-family", "PT Sans")
+                    .style("font-size", "18px")
+                    .text(function(d,i){
+                        return i==0 ? "hazard rate" : "cumulative hazard";
+                    });
             svghaz.append("path")
                     .datum(datasub)
                     .attr("class", "nahazline")
-                    .style("fill","rgb(100,100,100)")
+                    .style("fill","rgb(50,50,50)")
                     .style("shape-rendering", "crispEdges")
                     .attr("d", nahaz);
             svghaz.append("path")
@@ -262,6 +337,8 @@
                 svg.select(".grayrect")
                         .attr("y", mouse[1]-covtoh(bm))
                         .attr("height", covtoh(mxtocov(mouse[0])));
+                svghud.select("text.hudtxt")
+                        .text("marker window: " +  d3.round(mxtocov(mouse[0]), 2));
                 mouseold = mouse;
                 refresh = 0;
             }
